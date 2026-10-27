@@ -1,0 +1,139 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>J-Drive</title>
+<style>
+body{margin:0;overflow:hidden;background:#9bb8d0;font-family:Arial,sans-serif}
+canvas{display:block;touch-action:none}
+#hud{position:fixed;top:12px;left:12px;color:white;background:#101820cc;padding:12px;border-radius:12px;font-weight:bold}
+#controls{position:fixed;bottom:18px;left:0;right:0;display:flex;justify-content:space-between;padding:0 12px;gap:8px}
+button{background:#101820dd;color:white;border:1px solid #ffffff88;border-radius:14px;padding:18px 12px;font-size:16px;font-weight:bold;touch-action:none}
+</style>
+</head>
+<body>
+<div id="hud">J-DRIVE<br>R35 PROJECT<br><span id="speed">0 km/h</span></div>
+<div id="controls">
+<div><button id="left">◀</button><button id="right">▶</button></div>
+<div><button id="brake">ブレーキ</button><button id="gas">アクセル</button></div>
+</div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x9bb8d0);
+scene.fog=new THREE.Fog(0x9bb8d0,90,350);
+
+const camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,0.1,600);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+renderer.shadowMap.enabled=true;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xffffff,0x53604b,2));
+const sun=new THREE.DirectionalLight(0xffedcf,3);
+sun.position.set(-20,40,20);
+sun.castShadow=true;
+scene.add(sun);
+
+function material(color,roughness=.7,metalness=0){
+ return new THREE.MeshStandardMaterial({color,roughness,metalness});
+}
+function block(parent,w,h,d,mat,x,y,z){
+ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+ m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;
+ parent.add(m);return m;
+}
+
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(1000,1000),material(0x53694b));
+ground.rotation.x=-Math.PI/2;ground.position.y=-.12;
+ground.receiveShadow=true;scene.add(ground);
+
+const road=new THREE.Mesh(new THREE.PlaneGeometry(14,800),material(0x303438));
+road.rotation.x=-Math.PI/2;road.position.set(0,-.07,-350);
+road.receiveShadow=true;scene.add(road);
+
+for(let z=-750;z<50;z+=10){
+ const dash=new THREE.Mesh(new THREE.PlaneGeometry(.16,4),material(0xf0eee5));
+ dash.rotation.x=-Math.PI/2;dash.position.set(0,-.035,z);scene.add(dash);
+}
+for(const x of [-6.7,6.7]){
+ const edge=new THREE.Mesh(new THREE.PlaneGeometry(.12,800),material(0xffffff));
+ edge.rotation.x=-Math.PI/2;edge.position.set(x,-.03,-350);scene.add(edge);
+ const rail=block(scene,.15,.4,800,material(0x9ba5ac,.35,.6),x*1.12,.35,-350);
+}
+
+for(let i=0;i<50;i++){
+ const h=10+Math.random()*22;
+ const hill=new THREE.Mesh(new THREE.ConeGeometry(12+Math.random()*18,h,7),
+ material(i%2?0x596e5a:0x71816a));
+ hill.position.set((Math.random()<.5?-1:1)*(25+Math.random()*100),h/2-1,-40-Math.random()*600);
+ scene.add(hill);
+}
+
+const car=new THREE.Group();scene.add(car);
+const body=material(0x20252b,.22,.8);
+const glass=material(0x172d3b,.15,.5);
+const tire=material(0x101113,.95);
+const rim=material(0xb2bac0,.25,.9);
+
+block(car,2,.48,4.35,body,0,.68,0);
+block(car,1.55,.48,1.95,body,0,1.05,-.25);
+block(car,1.43,.36,1.5,glass,0,1.32,-.28);
+block(car,1.9,.12,.55,body,0,1.0,1.98);
+block(car,1.85,.12,.45,body,0,1.0,-1.95);
+block(car,.5,.09,.12,material(0xfff3d5),-.62,.83,-2.2);
+block(car,.5,.09,.12,material(0xfff3d5),.62,.83,-2.2);
+block(car,.45,.1,.1,material(0xc52626),-.65,.82,2.19);
+block(car,.45,.1,.1,material(0xc52626),.65,.82,2.19);
+
+const wheels=[];
+for(const x of [-1,1])for(const z of [-1.35,1.35]){
+ const w=new THREE.Group();w.position.set(x,.45,z);car.add(w);
+ const t=new THREE.Mesh(new THREE.CylinderGeometry(.43,.43,.25,24),tire);
+ t.rotation.z=Math.PI/2;t.castShadow=true;w.add(t);
+ const r=new THREE.Mesh(new THREE.CylinderGeometry(.25,.25,.265,16),rim);
+ r.rotation.z=Math.PI/2;w.add(r);wheels.push(w);
+}
+
+let speed=0,steer=0,gas=false,brake=false,left=false,right=false;
+function hold(id,set){
+ const b=document.getElementById(id);
+ b.addEventListener('pointerdown',e=>{e.preventDefault();set(true);b.setPointerCapture(e.pointerId)});
+ for(const ev of ['pointerup','pointercancel','lostpointercapture'])
+  b.addEventListener(ev,()=>set(false));
+}
+hold('gas',v=>gas=v);hold('brake',v=>brake=v);
+hold('left',v=>left=v);hold('right',v=>right=v);
+
+function animate(){
+ requestAnimationFrame(animate);
+ if(gas)speed=Math.min(speed+0.12,55);
+ else speed=Math.max(0,speed-.025);
+ if(brake)speed=Math.max(0,speed-.32);
+ const turn=(right?1:0)-(left?1:0);
+ steer+=(turn-steer)*.08;
+ car.position.x-=steer*speed*.012;
+ car.position.x=Math.max(-4.8,Math.min(4.8,car.position.x));
+ car.rotation.y=-steer*.12;
+ car.position.z-=speed*.025;
+ if(car.position.z < -20)car.position.z=0;
+ wheels.forEach(w=>w.rotation.x-=speed*.02);
+ camera.position.set(car.position.x*.5,4.0,car.position.z+8.5);
+ camera.lookAt(car.position.x,.7,car.position.z-5);
+ document.getElementById('speed').textContent=Math.round(speed*4)+' km/h';
+ renderer.render(scene,camera);
+}
+addEventListener('resize',()=>{
+ camera.aspect=innerWidth/innerHeight;
+ camera.updateProjectionMatrix();
+ renderer.setSize(innerWidth,innerHeight);
+});
+animate();
+</script>
+</body>
+</html>
