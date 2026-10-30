@@ -1,219 +1,253 @@
 
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>J-Drive R35 Project</title>
+<title>J-Drive R35</title>
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#91b7d3;font-family:system-ui,sans-serif;touch-action:none}
-canvas{display:block;width:100%;height:100%}
-#hud{position:fixed;top:12px;left:12px;background:#101c2ddd;color:white;padding:12px 15px;border-radius:13px;font-weight:800;line-height:1.5;z-index:2}
-#controls{position:fixed;bottom:14px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:end;z-index:3;pointer-events:none}
-.group{display:flex;gap:8px;pointer-events:auto}
-button,select{font:700 16px system-ui;color:white;background:#101820ed;border:1px solid #ffffff80;border-radius:14px;padding:17px 18px;min-height:58px;touch-action:none}
-button:active{background:#34536a}
-#pedals button{min-width:78px}
-#settings{position:fixed;right:12px;top:12px;z-index:5}
-#panel{display:none;position:fixed;inset:0;z-index:6;background:#000b;align-items:center;justify-content:center;padding:16px}
-#box{background:#172330;color:white;padding:20px;border-radius:18px;width:min(440px,100%)}
-.row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:15px 0}
-.row select{max-width:60%;padding:10px}
-small{opacity:.8}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#9bbbd3;font-family:system-ui,sans-serif;touch-action:none}
+canvas{display:block}
+button,select{padding:13px;border-radius:12px;border:1px solid #aaa;background:#172330;color:white;font-weight:bold;font-size:15px;touch-action:none}
+#hud{position:fixed;top:12px;left:12px;background:#101820dd;color:white;padding:12px;border-radius:12px;z-index:2;line-height:1.6}
+#status{font-size:12px}
+#settings{position:fixed;right:12px;top:12px;z-index:3}
+#controls{position:fixed;bottom:14px;left:12px;right:12px;display:flex;justify-content:space-between;z-index:2}
+.group{display:flex;gap:8px;align-items:end}
+#controls button{min-height:58px;min-width:58px}
+#gas{background:#176a42}
+#brake{background:#a72b2b}
+#panel{display:none;position:fixed;inset:0;background:#000b;z-index:4;align-items:center;justify-content:center;padding:16px}
+#box{background:#172330;color:white;padding:20px;border-radius:16px;width:min(400px,100%)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:16px 0}
 </style>
 </head>
 <body>
-<div id="hud">J-DRIVE<br>R35 PROJECT<br><span id="speed">0</span> km/h</div>
+<div id="hud">
+ J-DRIVE<br>R35 GT-R NISMO<br>
+ <span id="speed">0</span> km/h<br>
+ <span id="status">モデル読み込み中...</span>
+</div>
 <button id="settings">⚙ 設定</button>
 <div id="controls">
  <div class="group">
   <button id="left">◀</button><button id="right">▶</button>
  </div>
- <div class="group" id="pedals">
-  <button id="brake">ブレーキ</button><button id="gas">アクセル</button>
+ <div class="group">
+  <button id="brake">ブレーキ</button>
+  <button id="gas">アクセル</button>
  </div>
 </div>
 <div id="panel">
  <div id="box">
   <h2>J-Drive 設定</h2>
   <div class="row"><label for="quality">画質</label>
-   <select id="quality"><option value="0.7">軽量</option><option value="1" selected>標準</option><option value="1.5">高画質</option></select>
+   <select id="quality">
+    <option value="0.7">軽量</option>
+    <option value="1" selected>標準</option>
+    <option value="1.5">高画質</option>
+   </select>
   </div>
-  <div class="row"><label for="paint">ボディカラー</label>
+  <div class="row"><label for="paint">車体カラー</label>
    <select id="paint">
-    <option value="#15191e">ブラック</option><option value="#eeeeee">ホワイト</option>
-    <option value="#b71925">レッド</option><option value="#1763a8">ブルー</option>
+    <option value="#17191d">ブラック</option>
+    <option value="#eeeeee">ホワイト</option>
+    <option value="#b71925">レッド</option>
+    <option value="#1763a8">ブルー</option>
     <option value="#777b80">シルバー</option>
    </select>
   </div>
-  <small>高画質設定はiPadの動作が重くなる場合があります。</small>
-  <div class="row"><button id="close">閉じる</button><button id="reset">リセット</button></div>
+  <p>高画質は動作が重くなる場合があります。</p>
+  <div class="row">
+   <button id="close">閉じる</button>
+   <button id="reset">リセット</button>
+  </div>
  </div>
 </div>
+
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
+import {GLTFLoader} from 'https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/GLTFLoader.js';
 
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x9bbbd3);
-scene.fog=new THREE.Fog(0x9bbbd3,100,500);
+scene.fog=new THREE.Fog(0x9bbbd3,120,700);
 
-const camera=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,.1,900);
-camera.position.set(0,4.2,9);
+const camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,0.1,1200);
+camera.position.set(0,3.5,8);
 
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+renderer.setPixelRatio(Math.min(devicePixelRatio,1));
 renderer.setSize(innerWidth,innerHeight);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.1;
 document.body.prepend(renderer.domElement);
 
-scene.add(new THREE.HemisphereLight(0xe5f3ff,0x66734b,2.1));
-const sun=new THREE.DirectionalLight(0xffffff,2.5);
-sun.position.set(-40,70,30);
+scene.add(new THREE.HemisphereLight(0xe8f4ff,0x58604a,2));
+const sun=new THREE.DirectionalLight(0xffffff,3);
+sun.position.set(-30,60,25);
 scene.add(sun);
 
-const mat=(color,roughness=.65,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
-const asphalt=mat(0x303234),grassMat=mat(0x71865b),lineMat=mat(0xf4f1e6);
-const metal=mat(0x34383c,.3,.75),rubber=mat(0x111214),glass=mat(0x101e27,.22,.35);
-const red=mat(0xff101c,.28,.1),darkRed=mat(0x85000a);
-const road=new THREE.Mesh(new THREE.PlaneGeometry(18,800),asphalt);
-road.rotation.x=-Math.PI/2;road.position.set(0,-.04,-300);scene.add(road);
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(1000,1000),grassMat);
-ground.rotation.x=-Math.PI/2;ground.position.set(0,-.12,-300);scene.add(ground);
+const mat=(c)=>new THREE.MeshStandardMaterial({color:c});
+const road=new THREE.Mesh(new THREE.PlaneGeometry(18,1400),mat(0x303236));
+road.rotation.x=-Math.PI/2;
+road.position.set(0,-0.06,-450);
+scene.add(road);
+
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(1800,1800),mat(0x71865b));
+ground.rotation.x=-Math.PI/2;
+ground.position.set(0,-0.15,-450);
+scene.add(ground);
 
 const dashes=[];
-for(let z=20;z>-760;z-=12){
- const dash=new THREE.Mesh(new THREE.BoxGeometry(.16,.025,5),lineMat);
- dash.position.set(0,.005,z);scene.add(dash);dashes.push(dash);
+for(let z=25;z>-1200;z-=12){
+ const d=new THREE.Mesh(new THREE.BoxGeometry(.16,.025,5),mat(0xf4f1e6));
+ d.position.set(0,0,z);
+ scene.add(d);
+ dashes.push(d);
 }
-for(const x of [-8.7,8.7]){
- const edge=new THREE.Mesh(new THREE.BoxGeometry(.12,.025,800),lineMat);
- edge.position.set(x,.005,-300);scene.add(edge);
+for(const x of [-8.6,8.6]){
+ const edge=new THREE.Mesh(new THREE.BoxGeometry(.12,.025,1400),mat(0xffffff));
+ edge.position.set(x,0,-450);
+ scene.add(edge);
 }
+
 const scenery=[];
-for(let i=0;i<38;i++){
- const z=-i*22-25;
+for(let i=0;i<45;i++){
  for(const side of [-1,1]){
-  const x=side*(13+(i%4)*4);
-  const h=7+(i*7%15);
-  const mountain=new THREE.Mesh(new THREE.ConeGeometry(h*.58,h,5),mat(i%2?0x71856b:0x879776));
-  mountain.position.set(x,h/2-.1,z-(i%3)*5);
-  scene.add(mountain);scenery.push(mountain);
+  const h=8+(i*7%17);
+  const m=new THREE.Mesh(
+   new THREE.ConeGeometry(h*.6,h,6),
+   mat(i%2?0x71856b:0x879776)
+  );
+  m.position.set(side*(16+(i%4)*5),h/2-0.1,-i*26-30);
+  scene.add(m);
+  scenery.push(m);
  }
 }
 
-// R35-style low, wide sports coupe
-const car=new THREE.Group();scene.add(car);
-const bodyMat=mat(0x15191e,.24,.65);
-function box(parent,w,h,d,material,x,y,z){
- const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
- m.position.set(x,y,z);parent.add(m);return m;
-}
-function sphere(parent,r,material,x,y,z,sx=1,sy=1,sz=1){
- const m=new THREE.Mesh(new THREE.SphereGeometry(r,20,12),material);
- m.position.set(x,y,z);m.scale.set(sx,sy,sz);parent.add(m);return m;
-}
-// Main body and sculpted upper section
-box(car,2.02,.48,4.15,bodyMat,0,.77,0);
-box(car,1.78,.22,1.45,bodyMat,0,1.08,-.12);
-const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.52,.58,1.72),glass);
-cabin.position.set(0,1.42,-.15);car.add(cabin);
-const roof=box(car,1.43,.12,1.12,bodyMat,0,1.73,-.22);
-box(car,1.9,.14,.22,bodyMat,0,.61,-2.03);
-box(car,2.05,.13,.22,bodyMat,0,.55,2.02);
-// Front bumper and rear diffuser
-box(car,2.12,.23,.34,bodyMat,0,.55,-2.12);
-box(car,1.82,.15,.25,metal,0,.44,-2.25);
-box(car,1.95,.20,.32,bodyMat,0,.55,2.15);
-box(car,1.65,.12,.18,metal,0,.42,2.28);
-// Side skirts
-for(const s of [-1,1]){
- box(car,.12,.16,2.65,bodyMat,s*1.01,.52,0);
- // side mirrors
- sphere(car,.13,bodyMat,s*.95,1.15,-.85,1,.7,1.2);
- // wheel arch trim
- for(const z of [-1.35,1.35]){
-  const arch=new THREE.Mesh(new THREE.TorusGeometry(.43,.055,8,28,Math.PI),bodyMat);
-  arch.rotation.z=Math.PI;arch.position.set(s*1.01,.63,z);car.add(arch);
- }
-}
-// Four detailed wheels
-const wheels=[];
-for(const x of [-1.02,1.02])for(const z of [-1.35,1.35]){
- const wheel=new THREE.Group();wheel.position.set(x,.48,z);car.add(wheel);wheels.push(wheel);
- const tire=new THREE.Mesh(new THREE.CylinderGeometry(.39,.39,.22,32),rubber);
- tire.rotation.z=Math.PI/2;wheel.add(tire);
- const rim=new THREE.Mesh(new THREE.CylinderGeometry(.27,.27,.235,24),metal);
- rim.rotation.z=Math.PI/2;wheel.add(rim);
- const hub=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.245,16),mat(0xb9bdc2,.25,.8));
- hub.rotation.z=Math.PI/2;wheel.add(hub);
- for(let k=0;k<10;k++){
-  const a=k*Math.PI/5;
-  const spoke=box(wheel,.045,.36,.055,metal,0,Math.cos(a)*.02,Math.sin(a)*.18);
-  spoke.rotation.x=a;
- }
-}
-// Four round rear lamps, two per side
-for(const x of [-.66,.66]){
- sphere(car,.16,red,x,.78,2.16,1,.8,.35);
- sphere(car,.105,darkRed,x,.78,2.205,1,.8,.25);
-}
-box(car,1.52,.08,.13,mat(0x17191b),0,.98,2.13);
-// Headlights
-for(const x of [-.72,.72]){
- sphere(car,.16,mat(0xe7f4ff,.2),x,.76,-2.13,1.2,.5,.3);
-}
-// Spoiler
-box(car,1.55,.08,.24,bodyMat,0,1.2,1.82);
-for(const x of [-.55,.55])box(car,.07,.24,.08,metal,x,1.08,1.82);
+const car=new THREE.Group();
+scene.add(car);
+let materials=[];
+let modelLoaded=false;
 
-let speed=0,steer=0,gas=false,brake=false,left=false,right=false,xpos=0;
+new GLTFLoader().load(
+ './2024_nissan_gt-r_nismo.glb',
+ (gltf)=>{
+  const model=gltf.scene;
+  const box=new THREE.Box3().setFromObject(model);
+  const size=box.getSize(new THREE.Vector3());
+  const center=box.getCenter(new THREE.Vector3());
+
+  model.position.sub(center);
+  const largest=Math.max(size.x,size.z);
+  model.scale.setScalar(4.5/largest);
+
+  const scaledBox=new THREE.Box3().setFromObject(model);
+  model.position.y-=scaledBox.min.y;
+
+  model.traverse((o)=>{
+   if(o.isMesh){
+    o.castShadow=true;
+    o.receiveShadow=true;
+    const list=Array.isArray(o.material)?o.material:[o.material];
+    list.forEach(m=>{
+     if(m&&m.color&&!materials.includes(m))materials.push(m);
+    });
+   }
+  });
+
+  car.add(model);
+  modelLoaded=true;
+  document.querySelector('#status').textContent='3Dモデル読み込み完了';
+ },
+ undefined,
+ (err)=>{
+  console.error(err);
+  document.querySelector('#status').textContent='読込失敗：ファイル名を確認';
+ }
+);
+
+let speed=0,xpos=0;
+let gas=false,brake=false,left=false,right=false;
 const speedEl=document.querySelector('#speed');
-function hold(id,set){
- const el=document.getElementById(id);
- el.addEventListener('pointerdown',e=>{e.preventDefault();set(true);el.setPointerCapture(e.pointerId)});
- const off=e=>{e.preventDefault();set(false)};
- el.addEventListener('pointerup',off);
- el.addEventListener('pointercancel',off);
- el.addEventListener('lostpointercapture',()=>set(false));
-}
-hold('gas',v=>gas=v);hold('brake',v=>brake=v);
-hold('left',v=>left=v);hold('right',v=>right=v);
 
-const overlay=document.querySelector('#panel');
-document.querySelector('#settings').onclick=()=>overlay.style.display='flex';
-document.querySelector('#close').onclick=()=>overlay.style.display='none';
-document.querySelector('#reset').onclick=()=>{speed=0;xpos=0;steer=0;car.position.x=0;};
-document.querySelector('#paint').onchange=e=>bodyMat.color.set(e.target.value);
+function hold(id,setter){
+ const el=document.getElementById(id);
+ el.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  setter(true);
+  try{el.setPointerCapture(e.pointerId)}catch(err){}
+ });
+ const release=e=>{e.preventDefault();setter(false)};
+ el.addEventListener('pointerup',release);
+ el.addEventListener('pointercancel',release);
+ el.addEventListener('lostpointercapture',()=>setter(false));
+}
+hold('gas',v=>gas=v);
+hold('brake',v=>brake=v);
+hold('left',v=>left=v);
+hold('right',v=>right=v);
+
+const panel=document.querySelector('#panel');
+document.querySelector('#settings').onclick=()=>panel.style.display='flex';
+document.querySelector('#close').onclick=()=>panel.style.display='none';
+
+document.querySelector('#reset').onclick=()=>{
+ speed=0;
+ xpos=0;
+ car.position.set(0,0,0);
+};
+
+document.querySelector('#paint').onchange=e=>{
+ const color=new THREE.Color(e.target.value);
+ materials.forEach(m=>{
+  if(m.color)m.color.copy(color);
+ });
+};
+
 document.querySelector('#quality').onchange=e=>{
- const q=Number(e.target.value);
- renderer.setPixelRatio(Math.min(devicePixelRatio*q,2));
+ renderer.setPixelRatio(Math.min(devicePixelRatio*Number(e.target.value),2));
  renderer.setSize(innerWidth,innerHeight);
 };
 
 function resize(){
- camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+ camera.aspect=innerWidth/innerHeight;
+ camera.updateProjectionMatrix();
  renderer.setSize(innerWidth,innerHeight);
 }
 addEventListener('resize',resize);
+
 let last=performance.now();
 function animate(now){
  requestAnimationFrame(animate);
- const dt=Math.min((now-last)/1000,.04);last=now;
- speed=gas?Math.min(220,speed+35*dt):Math.max(0,speed-7*dt);
+ const dt=Math.min((now-last)/1000,.04);
+ last=now;
+
+ if(gas)speed=Math.min(220,speed+35*dt);
+ else speed=Math.max(0,speed-5*dt);
  if(brake)speed=Math.max(0,speed-65*dt);
- steer=((right?1:0)-(left?1:0));
- xpos=Math.max(-5,Math.min(5,xpos+steer*dt*Math.max(.8,speed*.018)));
+
+ const steer=(right?1:0)-(left?1:0);
+ xpos=THREE.MathUtils.clamp(
+  xpos+steer*dt*Math.max(.8,speed*.018),-5,5
+ );
  car.position.x+=(xpos-car.position.x)*Math.min(1,dt*5);
  car.rotation.y=-steer*.07;
- wheels.forEach(w=>w.rotation.x-=speed*dt*.06);
+
  const move=speed*dt*.9;
- dashes.forEach(d=>{d.position.z+=move;if(d.position.z>18)d.position.z-=780});
- scenery.forEach(m=>{m.position.z+=move*.85;if(m.position.z>25)m.position.z-=820});
- camera.position.set(car.position.x*.42,4.1,9);
- camera.lookAt(car.position.x*.25,.9,-10);
+ dashes.forEach(d=>{
+  d.position.z+=move;
+  if(d.position.z>20)d.position.z-=1200;
+ });
+ scenery.forEach(m=>{
+  m.position.z+=move*.85;
+  if(m.position.z>30)m.position.z-=1200;
+ });
+
+ camera.position.set(car.position.x*.42,3.5,8);
+ camera.lookAt(car.position.x*.25,.8,-10);
  speedEl.textContent=Math.round(speed);
  renderer.render(scene,camera);
 }
